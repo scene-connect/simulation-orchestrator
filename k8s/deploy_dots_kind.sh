@@ -1,4 +1,6 @@
 #!/bin/bash
+kind_cluster_name="dots-kind"
+reg_name="kind-registry"
 
 # Start cluster
 kind create cluster --config=./kind-cluster.yaml
@@ -55,6 +57,23 @@ kubectl apply -f grafana-deployment.yaml -f influxdb-deployment.yaml -f mosquitt
 echo ""
 echo "Set k8s namespace to 'dots'"
 kubectl config set-context --current --namespace=dots
+
+echo ""
+echo "Setting up a local docker registry for deploying models"
+
+# See https://kind.sigs.k8s.io/docs/user/local-registry/
+REGISTRY_DIR="/etc/containerd/certs.d/localhost:5001"
+for node in $(kind get nodes --name ${kind_cluster_name}); do
+  docker exec "${node}" mkdir -p "${REGISTRY_DIR}"
+  cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${REGISTRY_DIR}/hosts.toml"
+[host."http://${reg_name}:5000"]
+EOF
+done
+
+if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${reg_name}")" = 'null' ]; then
+  docker network connect "kind" "${reg_name}"
+fi
+kubectl apply -f local-registry-hosting-config.yaml
 
 echo ""
 echo "Deploy DOTS finished"
