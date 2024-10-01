@@ -20,6 +20,7 @@ spec:
         image: eclipse-mosquitto # image name
         ports:
         - containerPort: 1883
+          hostPort: 1883
         volumeMounts: # use SubPath to overwrite a file
         - name: mosquitto-conf-volume
           mountPath: /mosquitto/config/mosquitto.conf
@@ -53,8 +54,8 @@ metadata:
   name: mosquitto
 spec:
   selector:
-    app: mosquitto # to connect with pod with label mongo-db
-  type: ClusterIP
+    app: mosquitto
+  type: LoadBalancer
   ports:
     - protocol: TCP
       port: 1883 # service port
