@@ -61,6 +61,12 @@ kubectl config set-context --current --namespace=dots
 echo ""
 echo "Setting up a local docker registry for deploying models"
 
+if [ "$(docker inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)" != 'true' ]; then
+  docker run \
+    -d --restart=always -p "127.0.0.1:${reg_port}:5000" --network bridge --name "${reg_name}" \
+    registry:2
+fi
+
 # See https://kind.sigs.k8s.io/docs/user/local-registry/
 REGISTRY_DIR="/etc/containerd/certs.d/localhost:5001"
 for node in $(kind get nodes --name ${kind_cluster_name}); do
@@ -69,6 +75,7 @@ for node in $(kind get nodes --name ${kind_cluster_name}); do
 [host."http://${reg_name}:5000"]
 EOF
 done
+
 
 if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${reg_name}")" = 'null' ]; then
   docker network connect "kind" "${reg_name}"
